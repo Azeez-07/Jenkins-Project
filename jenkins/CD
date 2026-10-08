@@ -1,0 +1,68 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = "jenkins:v1"
+        CONTAINER_NAME = "jenkins-web"
+    }
+
+    stages {
+
+        stage('Check Docker Image') {
+            steps {
+                sh '''
+                    docker images
+                    docker image inspect ${IMAGE_NAME}
+                '''
+            }
+        }
+
+        stage('Stop Old Container') {
+            steps {
+                sh '''
+                    docker stop ${CONTAINER_NAME} || true
+                '''
+            }
+        }
+
+        stage('Remove Old Container') {
+            steps {
+                sh '''
+                    docker rm ${CONTAINER_NAME} || true
+                '''
+            }
+        }
+
+        stage('Deploy Container') {
+            steps {
+                sh '''
+                    docker run -d \
+                    --name ${CONTAINER_NAME} \
+                    -p 8081:80 \
+                    ${IMAGE_NAME}
+                '''
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                sh '''
+                    sleep 5
+                    docker ps
+                    curl -I http://localhost:8081
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'CD SUCCESS: Container deployed successfully!'
+            echo 'Application is running on port 8081.'
+        }
+
+        failure {
+            echo 'CD FAILED: Deployment failed.'
+        }
+    }
+}
