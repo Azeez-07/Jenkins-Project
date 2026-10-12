@@ -1,141 +1,60 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GitHub Webhook Status</title>
-
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f6f9;
-            margin: 0;
-            padding: 40px 20px;
-            text-align: center;
-        }
-
-        .container {
-            max-width: 600px;
-            margin: auto;
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px #00000015;
-        }
-
-        h1 {
-            color: #24292f;
-        }
-
-        .status {
-            margin: 25px 0;
-            padding: 18px;
-            border-radius: 8px;
-            background: #fff3cd;
-            color: #664d03;
-            font-weight: bold;
-        }
-
-        .success {
-            background: #d1e7dd;
-            color: #0f5132;
-        }
-
-        .error {
-            background: #f8d7da;
-            color: #842029;
-        }
-
-        button {
-            background: #0969da;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background: #0550ae;
-        }
-
-        p {
-            color: #444;
-            overflow-wrap: anywhere;
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GitHub Webhook Push Test</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font: 16px/1.5 system-ui, sans-serif; max-width: 760px; margin: 48px auto; padding: 0 20px; }
+    main { border: 1px solid #8886; border-radius: 14px; padding: 24px; }
+    .status { padding: 12px 14px; border-radius: 8px; background: #8882; }
+    code { overflow-wrap: anywhere; }
+    button { padding: 10px 14px; cursor: pointer; }
+  </style>
 </head>
-
 <body>
+<main>
+  <h1>GitHub Push Webhook Test</h1>
+  <p>This page displays a status message when the webhook receiver has processed a GitHub <code>push</code> event.</p>
+  <div class="status" id="status" role="status">Waiting for a push event…</div>
+  <p><strong>Last event:</strong> <span id="event">None received</span></p>
+  <p><strong>Commit:</strong> <span id="commit">—</span></p>
+  <p><strong>Branch:</strong> <span id="branch">—</span></p>
+  <p><strong>Delivery:</strong> <span id="delivery">—</span></p>
+  <button id="refresh">Check webhook status</button>
+  <p><small>Configure <code>STATUS_URL</code> in this file to point to your webhook receiver's status endpoint.</small></p>
+</main>
+<script>
+  // IMPORTANT:
+  // A static HTML page cannot receive GitHub webhooks directly.
+  // GitHub sends a POST request to a server-side webhook URL.
+  // Set STATUS_URL to your receiver's status endpoint, which should return JSON:
+  // { "event": "push", "branch": "main", "commit": "abc123", "delivery": "..." }
+  const STATUS_URL = "/webhook/status";
 
-    <div class="container">
-        <h1>GitHub Webhook Monitor</h1>
-
-        <p>Repository Push Event Status</p>
-
-        <div id="status" class="status">
-            Waiting for webhook status...
-        </div>
-
-        <p><strong>Event:</strong> <span id="event">None</span></p>
-        <p><strong>Branch:</strong> <span id="branch">-</span></p>
-        <p><strong>Commit:</strong> <span id="commit">-</span></p>
-        <p><strong>Delivery ID:</strong> <span id="delivery">-</span></p>
-
-        <button onclick="checkWebhook()">Check Status</button>
-    </div>
-
-    <script>
-        // Change this to your receiver's status endpoint.
-        const STATUS_URL = "/webhook/status";
-
-        async function checkWebhook() {
-            const status = document.getElementById("status");
-
-            status.className = "status";
-            status.textContent = "Checking webhook status...";
-
-            try {
-                const response = await fetch(STATUS_URL, {
-                    cache: "no-store"
-                });
-
-                if (!response.ok) {
-                    throw new Error("HTTP " + response.status);
-                }
-
-                const data = await response.json();
-
-                if (data.event !== "push") {
-                    status.textContent =
-                        "Receiver is reachable. No push event reported yet.";
-                    return;
-                }
-
-                status.className = "status success";
-                status.textContent =
-                    "SUCCESS! GitHub push webhook received.";
-
-                document.getElementById("event").textContent =
-                    data.event || "-";
-
-                document.getElementById("branch").textContent =
-                    data.branch || "-";
-
-                document.getElementById("commit").textContent =
-                    data.commit || "-";
-
-                document.getElementById("delivery").textContent =
-                    data.delivery || "-";
-
-            } catch (error) {
-                status.className = "status error";
-                status.textContent =
-                    "Unable to get webhook status: " + error.message;
-            }
-        }
-    </script>
-
+  async function checkStatus() {
+    const status = document.getElementById("status");
+    status.textContent = "Checking webhook receiver…";
+    try {
+      const response = await fetch(STATUS_URL, { cache: "no-store" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      if (data.event !== "push") {
+        status.textContent = "Receiver is reachable; no push event reported yet.";
+        return;
+      }
+      status.textContent = "SUCCESS — push webhook received by the server.";
+      document.getElementById("event").textContent = data.event || "—";
+      document.getElementById("branch").textContent = data.branch || "—";
+      document.getElementById("commit").textContent = data.commit || "—";
+      document.getElementById("delivery").textContent = data.delivery || "—";
+    } catch (error) {
+      status.textContent = `Cannot read webhook status (${error.message}). Configure STATUS_URL and ensure the receiver is running.`;
+    }
+  }
+  document.getElementById("refresh").addEventListener("click", checkStatus);
+  checkStatus();
+</script>
 </body>
 </html>
